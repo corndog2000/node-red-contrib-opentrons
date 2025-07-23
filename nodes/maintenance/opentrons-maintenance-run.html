@@ -1,0 +1,107 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-maintenance-run',{
+        category: 'opentrons',
+        color: '#1E90FF',
+        defaults: {
+            name: {value: ""},
+            server: {value: "", type: "opentrons-config", required: true},
+            action: {value: "create"},
+            maintenanceRunId: {value: ""},
+            autoStore: {value: true}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-wrench",
+        label: function() {
+            return this.name || "Maintenance: " + this.action;
+        },
+        paletteLabel: "Maintenance Run"
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-maintenance-run">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="node-input-action"><i class="fa fa-tasks"></i> Action</label>
+        <select id="node-input-action">
+            <option value="create">Create Maintenance Run</option>
+            <option value="get">Get Maintenance Run</option>
+            <option value="delete">Delete Maintenance Run</option>
+            <option value="current">Get Current Maintenance Run</option>
+        </select>
+    </div>
+    <div class="form-row" id="maintenance-run-id-row" style="display:none">
+        <label for="node-input-maintenanceRunId"><i class="fa fa-database"></i> Maintenance Run ID</label>
+        <input type="text" id="node-input-maintenanceRunId" placeholder="Maintenance Run ID" readonly>
+        <button type="button" id="clear-maintenance-id" style="margin-left:5px">Clear</button>
+    </div>
+    <div class="form-row" id="auto-store-row">
+        <label for="node-input-autoStore"><i class="fa fa-save"></i> Auto-store ID</label>
+        <input type="checkbox" id="node-input-autoStore" style="display:inline-block; width:auto; vertical-align:top;">
+        <span style="margin-left:5px; font-size:12px; color:#666;">Automatically store maintenance run ID when created</span>
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    
+    <script>
+        $("#node-input-action").on("change", function() {
+            const action = $(this).val();
+            if (action === "get" || action === "delete") {
+                $("#maintenance-run-id-row").show();
+            } else {
+                $("#maintenance-run-id-row").hide();
+            }
+            
+            if (action === "create") {
+                $("#auto-store-row").show();
+            } else {
+                $("#auto-store-row").hide();
+            }
+        });
+        
+        $("#clear-maintenance-id").on("click", function() {
+            $("#node-input-maintenanceRunId").val("");
+        });
+        
+        // Set initial state
+        $("#node-input-action").trigger("change");
+    </script>
+</script>
+
+<script type="text/html" data-help-name="opentrons-maintenance-run">
+    <p>Manage maintenance runs for direct robot control without protocols.</p>
+    <h3>What are Maintenance Runs?</h3>
+    <p>Maintenance runs allow you to directly control the robot without a pre-defined protocol. This is perfect for:</p>
+    <ul>
+        <li>Manual robot control and testing</li>
+        <li>Dynamic workflows that can't be pre-defined</li>
+        <li>Interactive robot operations</li>
+        <li>Maintenance and calibration tasks</li>
+    </ul>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>maintenanceRunId <span class="property-type">string</span></dt>
+        <dd>For get/delete actions: the maintenance run ID (can also be in payload.maintenanceRunId)</dd>
+        <dt>action <span class="property-type">string</span></dt>
+        <dd>Override the configured action (create|get|delete|current)</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>The maintenance run data</dd>
+        <dt>maintenanceRunId <span class="property-type">string</span></dt>
+        <dd>When creating a run, the ID is also set in msg.maintenanceRunId for easy chaining</dd>
+    </dl>
+    <h3>Typical Flow</h3>
+    <pre>
+[Inject] → [Maintenance Run: Create] → [Maintenance Command: Home]
+                                    ↓
+                            msg.maintenanceRunId
+    </pre>
+    <p>The Create action automatically sets msg.maintenanceRunId for downstream nodes.</p>
+</script>

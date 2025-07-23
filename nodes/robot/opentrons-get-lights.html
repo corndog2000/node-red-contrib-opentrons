@@ -1,0 +1,44 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-get-lights',{
+        category: 'opentrons',
+        color: '#1E90FF',
+        defaults: {
+            name: {value: ""},
+            server: {value: "", type: "opentrons-config", required: true}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-lightbulb-o",
+        label: function() {
+            return this.name || "Get Lights";
+        },
+        paletteLabel: "Get Lights"
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-get-lights">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="opentrons-get-lights">
+    <p>Get the current lights status of an Opentrons robot.</p>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">any</span></dt>
+        <dd>Triggers the get lights request</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>The lights status with 'on' property indicating if lights are on</dd>
+    </dl>
+    <h3>Details</h3>
+    <p>This node sends a GET request to /robot/lights endpoint to get the current lights status.</p>
+</script>

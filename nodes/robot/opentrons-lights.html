@@ -1,0 +1,49 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-lights',{
+        category: 'opentrons',
+        color: '#1E90FF',
+        defaults: {
+            name: {value: ""},
+            server: {value: "", type: "opentrons-config", required: true},
+            lightsOn: {value: true}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-lightbulb-o",
+        label: function() {
+            return this.name || "Set Lights";
+        },
+        paletteLabel: "Set Lights"
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-lights">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="node-input-lightsOn"><i class="fa fa-lightbulb-o"></i> Lights On</label>
+        <input type="checkbox" id="node-input-lightsOn" style="display:inline-block; width:auto; vertical-align:top;">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="opentrons-lights">
+    <p>Control the lights on an Opentrons robot.</p>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">boolean | object</span></dt>
+        <dd>If boolean, sets the lights on/off. If object with 'on' property, uses that value. Otherwise uses configured value.</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>The lights status response from the robot</dd>
+    </dl>
+    <h3>Details</h3>
+    <p>This node sends a POST request to /robot/lights endpoint to control the robot's lights.</p>
+</script>

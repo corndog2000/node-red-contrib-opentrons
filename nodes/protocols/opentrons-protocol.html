@@ -1,0 +1,62 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-protocol',{
+        category: 'opentrons',
+        color: '#1E90FF',
+        defaults: {
+            name: {value: ""},
+            server: {value: "", type: "opentrons-config", required: true},
+            action: {value: "list"}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-file-text",
+        label: function() {
+            return this.name || "Protocol: " + this.action;
+        },
+        paletteLabel: "Protocol Management"
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-protocol">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="node-input-action"><i class="fa fa-tasks"></i> Action</label>
+        <select id="node-input-action">
+            <option value="list">List Protocols</option>
+            <option value="get">Get Protocol</option>
+            <option value="delete">Delete Protocol</option>
+            <option value="analyze">Analyze Protocol</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="opentrons-protocol">
+    <p>Manage protocols on an Opentrons robot.</p>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>protocolId <span class="property-type">string</span></dt>
+        <dd>For get/delete/analyze actions: the protocol ID (can also be in payload.protocolId)</dd>
+        <dt>action <span class="property-type">string</span></dt>
+        <dd>Override the configured action (list|get|delete|analyze)</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>The protocol data or list of protocols</dd>
+    </dl>
+    <h3>Details</h3>
+    <p>This node provides various operations for managing protocols:</p>
+    <ul>
+        <li><b>List Protocols</b>: Get all protocols</li>
+        <li><b>Get Protocol</b>: Get a specific protocol by ID</li>
+        <li><b>Delete Protocol</b>: Delete a protocol</li>
+        <li><b>Analyze Protocol</b>: Create a new analysis for a protocol</li>
+    </ul>
+</script>

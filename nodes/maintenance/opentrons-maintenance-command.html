@@ -1,0 +1,567 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-maintenance-command',{
+        category: 'opentrons',
+        color: '#FF6347',
+        defaults: {
+            name: {value: ""},
+            server: {value: "", type: "opentrons-config", required: true},
+            maintenanceRunId: {value: ""},
+            autoUseLatest: {value: true},
+            commandType: {value: ""},
+            // Common parameters
+            pipetteId: {value: ""},
+            labwareId: {value: ""},
+            wellName: {value: ""},
+            volume: {value: ""},
+            flowRate: {value: ""},
+            wellLocation: {value: ""},
+            offset: {value: {x: 0, y: 0, z: 0}},
+            // Movement parameters
+            minimumZHeight: {value: ""},
+            forceDirect: {value: false},
+            speed: {value: ""},
+            // Load parameters
+            pipetteName: {value: ""},
+            mount: {value: ""},
+            location: {value: ""},
+            loadName: {value: ""},
+            namespace: {value: ""},
+            version: {value: ""},
+            newLocation: {value: ""},
+            strategy: {value: ""},
+            // Other parameters
+            axes: {value: ""},
+            message: {value: ""},
+            seconds: {value: ""}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-wrench",
+        label: function() {
+            return this.name || "Maintenance Command";
+        },
+        paletteLabel: "Maintenance Command",
+        oneditprepare: function() {
+            const node = this;
+            const commandDefinitions = {
+                "aspirate": {
+                    label: "Aspirate",
+                    params: ["pipetteId", "labwareId", "wellName", "volume", "flowRate", "wellLocation", "offset"]
+                },
+                "dispense": {
+                    label: "Dispense",
+                    params: ["pipetteId", "labwareId", "wellName", "volume", "flowRate", "wellLocation", "offset"]
+                },
+                "blowout": {
+                    label: "Blowout",
+                    params: ["pipetteId", "labwareId", "wellName", "flowRate", "wellLocation", "offset"]
+                },
+                "pickUpTip": {
+                    label: "Pick Up Tip",
+                    params: ["pipetteId", "labwareId", "wellName", "wellLocation", "offset"]
+                },
+                "dropTip": {
+                    label: "Drop Tip",
+                    params: ["pipetteId", "labwareId", "wellName", "wellLocation", "offset"]
+                },
+                "moveToWell": {
+                    label: "Move To Well",
+                    params: ["pipetteId", "labwareId", "wellName", "wellLocation", "offset", "minimumZHeight", "forceDirect", "speed"]
+                },
+                "moveLabware": {
+                    label: "Move Labware",
+                    params: ["labwareId", "newLocation", "strategy"]
+                },
+                "loadLabware": {
+                    label: "Load Labware",
+                    params: ["labwareId", "location", "loadName", "namespace", "version"]
+                },
+                "loadPipette": {
+                    label: "Load Pipette",
+                    params: ["pipetteName", "mount"]
+                },
+                "home": {
+                    label: "Home",
+                    params: ["axes"]
+                },
+                "waitForResume": {
+                    label: "Wait For Resume",
+                    params: ["message"]
+                },
+                "pause": {
+                    label: "Pause",
+                    params: ["message"]
+                },
+                "delay": {
+                    label: "Delay",
+                    params: ["seconds"]
+                }
+            };
+
+            // Populate command type dropdown
+            const select = $("#node-input-commandType");
+            select.empty();
+            select.append('<option value="">-- Select Command --</option>');
+            
+            for (const [key, def] of Object.entries(commandDefinitions)) {
+                select.append(`<option value="${key}">${def.label}</option>`);
+            }
+
+            // Set the saved command type value
+            if (node.commandType) {
+                select.val(node.commandType);
+            }
+
+            // Function to show/hide parameter fields
+            function updateParameterFields() {
+                const selectedCommand = $("#node-input-commandType").val();
+                
+                // Hide all parameter rows first
+                $(".param-row").hide();
+                
+                if (selectedCommand && commandDefinitions[selectedCommand]) {
+                    const params = commandDefinitions[selectedCommand].params;
+                    params.forEach(param => {
+                        $(`.param-${param}`).show();
+                    });
+                }
+            }
+
+            // Update fields when command type changes
+            $("#node-input-commandType").on("change", updateParameterFields);
+            
+            // Set offset values if they exist
+            if (node.offset && typeof node.offset === 'object') {
+                $("#node-input-offset-x").val(node.offset.x || 0);
+                $("#node-input-offset-y").val(node.offset.y || 0);
+                $("#node-input-offset-z").val(node.offset.z || 0);
+            }
+            
+            // Restore all other saved values
+            const allParams = ["pipetteId", "labwareId", "wellName", "volume", "flowRate", 
+                             "wellLocation", "minimumZHeight", "speed",
+                             "pipetteName", "mount", "location", "loadName", "namespace", 
+                             "version", "newLocation", "strategy", "axes", "message", "seconds"];
+            
+            allParams.forEach(param => {
+                if (node[param] !== undefined && node[param] !== null) {
+                    $("#node-input-" + param).val(node[param]);
+                }
+            });
+            
+            // Special handling for checkbox
+            if (node.forceDirect !== undefined) {
+                $("#node-input-forceDirect").prop('checked', node.forceDirect);
+            }
+            
+            // Handle auto-use latest checkbox
+            if (node.autoUseLatest !== undefined) {
+                $("#node-input-autoUseLatest").prop('checked', node.autoUseLatest);
+            }
+            
+            // Show/hide manual run ID field based on auto-use setting
+            function updateRunIdVisibility() {
+                if ($("#node-input-autoUseLatest").is(':checked')) {
+                    $("#manual-run-id-row").hide();
+                } else {
+                    $("#manual-run-id-row").show();
+                }
+            }
+            
+            $("#node-input-autoUseLatest").on("change", updateRunIdVisibility);
+            updateRunIdVisibility();
+            
+            // Refresh run list button (placeholder for future enhancement)
+            $("#refresh-run-list").on("click", function() {
+                // Future: Could fetch available maintenance runs from the server
+                alert("Feature coming soon: Will fetch available maintenance runs");
+            });
+            
+            // Set initial state to show correct fields
+            updateParameterFields();
+        },
+        oneditsave: function() {
+            // Save offset values as an object
+            this.offset = {
+                x: parseFloat($("#node-input-offset-x").val()) || 0,
+                y: parseFloat($("#node-input-offset-y").val()) || 0,
+                z: parseFloat($("#node-input-offset-z").val()) || 0
+            };
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-maintenance-command">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-autoUseLatest"><i class="fa fa-refresh"></i> Auto-use Latest Run</label>
+        <input type="checkbox" id="node-input-autoUseLatest" style="display:inline-block; width:auto; vertical-align:top;">
+        <span style="margin-left:5px; font-size:12px; color:#666;">Automatically use the latest maintenance run ID</span>
+    </div>
+    
+    <div class="form-row" id="manual-run-id-row" style="display:none">
+        <label for="node-input-maintenanceRunId"><i class="fa fa-database"></i> Maintenance Run ID</label>
+        <input type="text" id="node-input-maintenanceRunId" placeholder="Enter maintenance run ID manually">
+        <button type="button" id="refresh-run-list" style="margin-left:5px" title="Refresh available runs">
+            <i class="fa fa-refresh"></i>
+        </button>
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-commandType"><i class="fa fa-code"></i> Command Type</label>
+        <select id="node-input-commandType">
+            <option value="">-- Select Command --</option>
+        </select>
+    </div>
+    
+    <!-- Parameter fields (initially hidden) -->
+    <div class="form-row param-row param-pipetteId" style="display:none">
+        <label for="node-input-pipetteId"><i class="fa fa-eyedropper"></i> Pipette ID</label>
+        <input type="text" id="node-input-pipetteId" placeholder="Pipette ID">
+    </div>
+    
+    <div class="form-row param-row param-labwareId" style="display:none">
+        <label for="node-input-labwareId"><i class="fa fa-flask"></i> Labware ID</label>
+        <input type="text" id="node-input-labwareId" placeholder="Labware ID">
+    </div>
+    
+    <div class="form-row param-row param-wellName" style="display:none">
+        <label for="node-input-wellName"><i class="fa fa-th"></i> Well Name</label>
+        <input type="text" id="node-input-wellName" placeholder="e.g., A1, B2">
+    </div>
+    
+    <div class="form-row param-row param-volume" style="display:none">
+        <label for="node-input-volume"><i class="fa fa-tint"></i> Volume (μL)</label>
+        <input type="text" id="node-input-volume" placeholder="Volume in microliters">
+    </div>
+    
+    <div class="form-row param-row param-flowRate" style="display:none">
+        <label for="node-input-flowRate"><i class="fa fa-tachometer"></i> Flow Rate</label>
+        <input type="text" id="node-input-flowRate" placeholder="Flow rate (μL/s)">
+    </div>
+    
+    <div class="form-row param-row param-wellLocation" style="display:none">
+        <label for="node-input-wellLocation"><i class="fa fa-map-marker"></i> Well Location</label>
+        <input type="text" id="node-input-wellLocation" placeholder="top, bottom, center">
+    </div>
+    
+    <div class="form-row param-row param-offset" style="display:none">
+        <label><i class="fa fa-arrows"></i> Offset (x,y,z)</label>
+        <label for="node-input-offset-x" style="width:auto">X:</label>
+        <input type="text" id="node-input-offset-x" style="width:50px" placeholder="0" data-offset="x">
+        <label for="node-input-offset-y" style="width:auto; margin-left:10px">Y:</label>
+        <input type="text" id="node-input-offset-y" style="width:50px" placeholder="0" data-offset="y">
+        <label for="node-input-offset-z" style="width:auto; margin-left:10px">Z:</label>
+        <input type="text" id="node-input-offset-z" style="width:50px" placeholder="0" data-offset="z">
+    </div>
+    
+    <div class="form-row param-row param-minimumZHeight" style="display:none">
+        <label for="node-input-minimumZHeight"><i class="fa fa-arrows-v"></i> Min Z Height</label>
+        <input type="text" id="node-input-minimumZHeight" placeholder="Minimum Z height">
+    </div>
+    
+    <div class="form-row param-row param-forceDirect" style="display:none">
+        <label for="node-input-forceDirect"><i class="fa fa-bolt"></i> Force Direct</label>
+        <input type="checkbox" id="node-input-forceDirect" style="display:inline-block; width:auto; vertical-align:top;">
+    </div>
+    
+    <div class="form-row param-row param-speed" style="display:none">
+        <label for="node-input-speed"><i class="fa fa-forward"></i> Speed</label>
+        <input type="text" id="node-input-speed" placeholder="Movement speed">
+    </div>
+    
+    <div class="form-row param-row param-pipetteName" style="display:none">
+        <label for="node-input-pipetteName"><i class="fa fa-eyedropper"></i> Pipette Name</label>
+        <input type="text" id="node-input-pipetteName" placeholder="e.g., p300_single">
+    </div>
+    
+    <div class="form-row param-row param-mount" style="display:none">
+        <label for="node-input-mount"><i class="fa fa-plug"></i> Mount</label>
+        <select id="node-input-mount">
+            <option value="">-- Select --</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+        </select>
+    </div>
+    
+    <div class="form-row param-row param-axes" style="display:none">
+        <label for="node-input-axes"><i class="fa fa-arrows"></i> Axes</label>
+        <input type="text" id="node-input-axes" placeholder='["x", "y", "z"]'>
+    </div>
+    
+    <div class="form-row param-row param-message" style="display:none">
+        <label for="node-input-message"><i class="fa fa-comment"></i> Message</label>
+        <input type="text" id="node-input-message" placeholder="Message to display">
+    </div>
+    
+    <div class="form-row param-row param-seconds" style="display:none">
+        <label for="node-input-seconds"><i class="fa fa-clock-o"></i> Seconds</label>
+        <input type="text" id="node-input-seconds" placeholder="Delay in seconds">
+    </div>
+    
+    <div class="form-row param-row param-newLocation" style="display:none">
+        <label for="node-input-newLocation"><i class="fa fa-location-arrow"></i> New Location</label>
+        <input type="text" id="node-input-newLocation" placeholder="New location">
+    </div>
+    
+    <div class="form-row param-row param-strategy" style="display:none">
+        <label for="node-input-strategy"><i class="fa fa-puzzle-piece"></i> Strategy</label>
+        <input type="text" id="node-input-strategy" placeholder="Movement strategy">
+    </div>
+    
+    <div class="form-row param-row param-location" style="display:none">
+        <label for="node-input-location"><i class="fa fa-map-marker"></i> Location</label>
+        <input type="text" id="node-input-location" placeholder="Location">
+    </div>
+    
+    <div class="form-row param-row param-loadName" style="display:none">
+        <label for="node-input-loadName"><i class="fa fa-tag"></i> Load Name</label>
+        <input type="text" id="node-input-loadName" placeholder="Labware load name">
+    </div>
+    
+    <div class="form-row param-row param-namespace" style="display:none">
+        <label for="node-input-namespace"><i class="fa fa-folder"></i> Namespace</label>
+        <input type="text" id="node-input-namespace" placeholder="Labware namespace">
+    </div>
+    
+    <div class="form-row param-row param-version" style="display:none">
+        <label for="node-input-version"><i class="fa fa-code-fork"></i> Version</label>
+        <input type="text" id="node-input-version" placeholder="Labware version">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="opentrons-maintenance-command">
+    <p>Send commands directly to the robot using maintenance runs - <strong>no protocol required!</strong></p>
+    <h3>Perfect for Direct Robot Control</h3>
+    <p style="background-color: #e6ffe6; padding: 10px; border-left: 3px solid #00cc00;">
+        <strong>This node allows direct robot control without pre-defined protocols.</strong><br>
+        Commands are sent to maintenance runs, giving you real-time control over the robot.
+    </p>
+    
+    <h3>Setup</h3>
+    <ol>
+        <li>Create a maintenance run using the "Maintenance Run" node</li>
+        <li>Use this node with "Auto-use Latest Run" enabled (default)</li>
+        <li>Select your command type and configure parameters</li>
+        <li>Deploy and trigger</li>
+    </ol>
+    
+    <h3>Command Types & Parameters</h3>
+    
+    <h4>🏠 Home</h4>
+    <p>Home the robot's axes to their reference positions.</p>
+    <dl class="message-properties">
+        <dt>axes <span class="property-type">array</span></dt>
+        <dd><strong>Optional</strong> - Array of axes to home. Default: all axes<br>
+        <strong>Format:</strong> <code>["x", "y", "z"]</code> or <code>["x"]</code><br>
+        <strong>Example:</strong> <code>["x", "y", "z"]</code></dd>
+    </dl>
+    
+    <h4>💧 Aspirate</h4>
+    <p>Draw liquid into the pipette from a specified location.</p>
+    <dl class="message-properties">
+        <dt>pipetteId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the pipette to use<br>
+        <strong>Example:</strong> <code>"12345678-1234-1234-1234-123456789012"</code></dd>
+        <dt>labwareId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the labware containing the liquid<br>
+        <strong>Example:</strong> <code>"labware_1"</code></dd>
+        <dt>wellName <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Name of the well to aspirate from<br>
+        <strong>Format:</strong> Letter + Number (A1, B2, etc.)<br>
+        <strong>Example:</strong> <code>"A1"</code></dd>
+        <dt>volume <span class="property-type">number</span></dt>
+        <dd><strong>REQUIRED</strong> - Volume to aspirate in microliters<br>
+        <strong>Example:</strong> <code>100</code> (for 100μL)</dd>
+        <dt>flowRate <span class="property-type">number</span></dt>
+        <dd><strong>Optional</strong> - Flow rate in μL/s<br>
+        <strong>Example:</strong> <code>50</code></dd>
+        <dt>wellLocation <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Position within the well<br>
+        <strong>Options:</strong> <code>"top"</code>, <code>"bottom"</code>, <code>"center"</code><br>
+        <strong>Default:</strong> <code>"top"</code></dd>
+        <dt>offset <span class="property-type">object</span></dt>
+        <dd><strong>Optional</strong> - X,Y,Z offset from well location<br>
+        <strong>Format:</strong> <code>{x: 0, y: 0, z: 5}</code><br>
+        <strong>Units:</strong> millimeters</dd>
+    </dl>
+    
+    <h4>💧 Dispense</h4>
+    <p>Dispense liquid from the pipette to a specified location.</p>
+    <dl class="message-properties">
+        <dt colspan="2">Uses the same parameters as <strong>Aspirate</strong></dt>
+    </dl>
+    
+    <h4>💨 Blowout</h4>
+    <p>Expel any remaining liquid from the pipette tip.</p>
+    <dl class="message-properties">
+        <dt>pipetteId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the pipette</dd>
+        <dt>labwareId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the labware</dd>
+        <dt>wellName <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Well to blowout into</dd>
+        <dt>flowRate <span class="property-type">number</span></dt>
+        <dd><strong>Optional</strong> - Flow rate in μL/s</dd>
+        <dt>wellLocation <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Position within well</dd>
+        <dt>offset <span class="property-type">object</span></dt>
+        <dd><strong>Optional</strong> - Position offset</dd>
+    </dl>
+    
+    <h4>🎯 Pick Up Tip</h4>
+    <p>Pick up a pipette tip from a tip rack.</p>
+    <dl class="message-properties">
+        <dt>pipetteId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the pipette</dd>
+        <dt>labwareId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the tip rack<br>
+        <strong>Example:</strong> <code>"tiprack_1"</code></dd>
+        <dt>wellName <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Tip position to pick up<br>
+        <strong>Example:</strong> <code>"A1"</code></dd>
+        <dt>wellLocation <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Usually <code>"top"</code> for tip racks</dd>
+        <dt>offset <span class="property-type">object</span></dt>
+        <dd><strong>Optional</strong> - Position offset</dd>
+    </dl>
+    
+    <h4>🗑️ Drop Tip</h4>
+    <p>Drop the current pipette tip.</p>
+    <dl class="message-properties">
+        <dt colspan="2">Uses the same parameters as <strong>Pick Up Tip</strong><br>
+        Often dropped into a trash labware or back to tip rack</dt>
+    </dl>
+    
+    <h4>↗️ Move To Well</h4>
+    <p>Move the pipette to a specific well position.</p>
+    <dl class="message-properties">
+        <dt>pipetteId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the pipette</dd>
+        <dt>labwareId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the labware</dd>
+        <dt>wellName <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Well to move to</dd>
+        <dt>wellLocation <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Position within well</dd>
+        <dt>offset <span class="property-type">object</span></dt>
+        <dd><strong>Optional</strong> - Position offset</dd>
+        <dt>minimumZHeight <span class="property-type">number</span></dt>
+        <dd><strong>Optional</strong> - Minimum Z height during movement<br>
+        <strong>Units:</strong> millimeters</dd>
+        <dt>forceDirect <span class="property-type">boolean</span></dt>
+        <dd><strong>Optional</strong> - Skip safe Z movements<br>
+        <strong>Default:</strong> <code>false</code></dd>
+        <dt>speed <span class="property-type">number</span></dt>
+        <dd><strong>Optional</strong> - Movement speed<br>
+        <strong>Units:</strong> mm/s</dd>
+    </dl>
+    
+    <h4>📦 Move Labware</h4>
+    <p>Move labware from one location to another.</p>
+    <dl class="message-properties">
+        <dt>labwareId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - ID of the labware to move</dd>
+        <dt>newLocation <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Destination location<br>
+        <strong>Examples:</strong> <code>"1"</code>, <code>"2"</code>, <code>"3"</code> (deck positions)</dd>
+        <dt>strategy <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Movement strategy<br>
+        <strong>Options:</strong> <code>"usingGripper"</code>, <code>"manualMoveWithPause"</code></dd>
+    </dl>
+    
+    <h4>🧪 Load Labware</h4>
+    <p>Load new labware onto the deck.</p>
+    <dl class="message-properties">
+        <dt>location <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Deck position<br>
+        <strong>Examples:</strong> <code>"1"</code>, <code>"2"</code>, <code>"3"</code></dd>
+        <dt>loadName <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Labware definition name<br>
+        <strong>Examples:</strong> <code>"opentrons_96_tiprack_300ul"</code>, <code>"nest_96_wellplate_100ul_pcr_full_skirt"</code></dd>
+        <dt>namespace <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Labware namespace<br>
+        <strong>Example:</strong> <code>"opentrons"</code></dd>
+        <dt>version <span class="property-type">number</span></dt>
+        <dd><strong>REQUIRED</strong> - Labware definition version<br>
+        <strong>Example:</strong> <code>1</code></dd>
+        <dt>labwareId <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Custom ID for the labware<br>
+        <strong>Example:</strong> <code>"my_plate_1"</code></dd>
+    </dl>
+    
+    <h4>🔧 Load Pipette</h4>
+    <p>Load a pipette onto a mount.</p>
+    <dl class="message-properties">
+        <dt>pipetteName <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Pipette model name<br>
+        <strong>Examples:</strong> <code>"p300_single"</code>, <code>"p1000_single"</code>, <code>"p300_multi"</code></dd>
+        <dt>mount <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - Mount position<br>
+        <strong>Options:</strong> <code>"left"</code>, <code>"right"</code></dd>
+        <dt>pipetteId <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Custom ID for the pipette</dd>
+    </dl>
+    
+    <h4>⏸️ Pause</h4>
+    <p>Pause execution and display a message.</p>
+    <dl class="message-properties">
+        <dt>message <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Message to display during pause<br>
+        <strong>Example:</strong> <code>"Please check the setup and click resume"</code></dd>
+    </dl>
+    
+    <h4>⏯️ Wait For Resume</h4>
+    <p>Pause and wait for user to manually resume.</p>
+    <dl class="message-properties">
+        <dt>message <span class="property-type">string</span></dt>
+        <dd><strong>Optional</strong> - Message to display<br>
+        <strong>Example:</strong> <code>"Replace the tip rack and click resume"</code></dd>
+    </dl>
+    
+    <h4>⏰ Delay</h4>
+    <p>Wait for a specified amount of time.</p>
+    <dl class="message-properties">
+        <dt>seconds <span class="property-type">number</span></dt>
+        <dd><strong>REQUIRED</strong> - Time to wait in seconds<br>
+        <strong>Example:</strong> <code>5.5</code> (for 5.5 seconds)</dd>
+    </dl>
+    
+    <h3>Parameter Override</h3>
+    <p>All parameters can be overridden via message properties:</p>
+    <pre>
+msg.pipetteId = "my_pipette_id";
+msg.volume = 150;
+msg.offset = {x: 1, y: 0, z: 2};
+    </pre>
+    
+    <h3>Common Examples</h3>
+    <h4>Basic Pipetting Workflow:</h4>
+    <pre>
+1. Load Pipette: mount="left", pipetteName="p300_single"
+2. Load Labware: location="1", loadName="opentrons_96_tiprack_300ul"
+3. Pick Up Tip: labwareId="tiprack_1", wellName="A1"
+4. Aspirate: labwareId="source_plate", wellName="A1", volume=100
+5. Dispense: labwareId="dest_plate", wellName="B1", volume=100
+6. Drop Tip: labwareId="trash", wellName="A1"
+    </pre>
+    
+    <h4>Movement Example:</h4>
+    <pre>
+Move To Well: 
+  pipetteId="pipette_1"
+  labwareId="plate_1" 
+  wellName="C3"
+  wellLocation="bottom"
+  offset={x: 0, y: 0, z: 1}
+    </pre>
+</script>

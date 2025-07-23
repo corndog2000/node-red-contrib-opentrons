@@ -1,0 +1,341 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-command',{
+        category: 'opentrons',
+        color: '#1E90FF',
+        defaults: {
+            name: {value: ""},
+            server: {value: "", type: "opentrons-config", required: true},
+            commandType: {value: ""},
+            // Common parameters
+            pipetteId: {value: ""},
+            labwareId: {value: ""},
+            wellName: {value: ""},
+            volume: {value: ""},
+            flowRate: {value: ""},
+            wellLocation: {value: ""},
+            offset: {value: {x: 0, y: 0, z: 0}},
+            // Movement parameters
+            minimumZHeight: {value: ""},
+            forceDirect: {value: false},
+            speed: {value: ""},
+            // Load parameters
+            pipetteName: {value: ""},
+            mount: {value: ""},
+            location: {value: ""},
+            loadName: {value: ""},
+            namespace: {value: ""},
+            version: {value: ""},
+            newLocation: {value: ""},
+            strategy: {value: ""},
+            // Other parameters
+            axes: {value: ""},
+            message: {value: ""},
+            seconds: {value: ""}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-terminal",
+        label: function() {
+            return this.name || "Send Command";
+        },
+        paletteLabel: "Send Command",
+        oneditprepare: function() {
+            const node = this;
+            const commandDefinitions = {
+                "aspirate": {
+                    label: "Aspirate",
+                    params: ["pipetteId", "labwareId", "wellName", "volume", "flowRate", "wellLocation", "offset"]
+                },
+                "dispense": {
+                    label: "Dispense",
+                    params: ["pipetteId", "labwareId", "wellName", "volume", "flowRate", "wellLocation", "offset"]
+                },
+                "blowout": {
+                    label: "Blowout",
+                    params: ["pipetteId", "labwareId", "wellName", "flowRate", "wellLocation", "offset"]
+                },
+                "pickUpTip": {
+                    label: "Pick Up Tip",
+                    params: ["pipetteId", "labwareId", "wellName", "wellLocation", "offset"]
+                },
+                "dropTip": {
+                    label: "Drop Tip",
+                    params: ["pipetteId", "labwareId", "wellName", "wellLocation", "offset"]
+                },
+                "moveToWell": {
+                    label: "Move To Well",
+                    params: ["pipetteId", "labwareId", "wellName", "wellLocation", "offset", "minimumZHeight", "forceDirect", "speed"]
+                },
+                "moveLabware": {
+                    label: "Move Labware",
+                    params: ["labwareId", "newLocation", "strategy"]
+                },
+                "loadLabware": {
+                    label: "Load Labware",
+                    params: ["labwareId", "location", "loadName", "namespace", "version"]
+                },
+                "loadPipette": {
+                    label: "Load Pipette",
+                    params: ["pipetteName", "mount"]
+                },
+                "home": {
+                    label: "Home",
+                    params: ["axes"]
+                },
+                "waitForResume": {
+                    label: "Wait For Resume",
+                    params: ["message"]
+                },
+                "pause": {
+                    label: "Pause",
+                    params: ["message"]
+                },
+                "delay": {
+                    label: "Delay",
+                    params: ["seconds"]
+                }
+            };
+
+            // Populate command type dropdown
+            const select = $("#node-input-commandType");
+            select.empty();
+            select.append('<option value="">-- Select Command --</option>');
+            
+            for (const [key, def] of Object.entries(commandDefinitions)) {
+                select.append(`<option value="${key}">${def.label}</option>`);
+            }
+
+            // Set the saved command type value
+            if (node.commandType) {
+                select.val(node.commandType);
+            }
+
+            // Function to show/hide parameter fields
+            function updateParameterFields() {
+                const selectedCommand = $("#node-input-commandType").val();
+                
+                // Hide all parameter rows first
+                $(".param-row").hide();
+                
+                if (selectedCommand && commandDefinitions[selectedCommand]) {
+                    const params = commandDefinitions[selectedCommand].params;
+                    params.forEach(param => {
+                        $(`.param-${param}`).show();
+                    });
+                }
+            }
+
+            // Update fields when command type changes
+            $("#node-input-commandType").on("change", updateParameterFields);
+            
+            // Set offset values if they exist
+            if (node.offset && typeof node.offset === 'object') {
+                $("#node-input-offset-x").val(node.offset.x || 0);
+                $("#node-input-offset-y").val(node.offset.y || 0);
+                $("#node-input-offset-z").val(node.offset.z || 0);
+            }
+            
+            // Restore all other saved values
+            const allParams = ["pipetteId", "labwareId", "wellName", "volume", "flowRate", 
+                             "wellLocation", "minimumZHeight", "speed",
+                             "pipetteName", "mount", "location", "loadName", "namespace", 
+                             "version", "newLocation", "strategy", "axes", "message", "seconds"];
+            
+            allParams.forEach(param => {
+                if (node[param] !== undefined && node[param] !== null) {
+                    $("#node-input-" + param).val(node[param]);
+                }
+            });
+            
+            // Special handling for checkbox
+            if (node.forceDirect !== undefined) {
+                $("#node-input-forceDirect").prop('checked', node.forceDirect);
+            }
+            
+            // Set initial state to show correct fields
+            updateParameterFields();
+        },
+        oneditsave: function() {
+            // Save offset values as an object
+            this.offset = {
+                x: parseFloat($("#node-input-offset-x").val()) || 0,
+                y: parseFloat($("#node-input-offset-y").val()) || 0,
+                z: parseFloat($("#node-input-offset-z").val()) || 0
+            };
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-command">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="node-input-commandType"><i class="fa fa-code"></i> Command Type</label>
+        <select id="node-input-commandType">
+            <option value="">-- Select Command --</option>
+        </select>
+    </div>
+    
+    <!-- Parameter fields (initially hidden) -->
+    <div class="form-row param-row param-pipetteId" style="display:none">
+        <label for="node-input-pipetteId"><i class="fa fa-eyedropper"></i> Pipette ID</label>
+        <input type="text" id="node-input-pipetteId" placeholder="Pipette ID">
+    </div>
+    
+    <div class="form-row param-row param-labwareId" style="display:none">
+        <label for="node-input-labwareId"><i class="fa fa-flask"></i> Labware ID</label>
+        <input type="text" id="node-input-labwareId" placeholder="Labware ID">
+    </div>
+    
+    <div class="form-row param-row param-wellName" style="display:none">
+        <label for="node-input-wellName"><i class="fa fa-th"></i> Well Name</label>
+        <input type="text" id="node-input-wellName" placeholder="e.g., A1, B2">
+    </div>
+    
+    <div class="form-row param-row param-volume" style="display:none">
+        <label for="node-input-volume"><i class="fa fa-tint"></i> Volume (μL)</label>
+        <input type="text" id="node-input-volume" placeholder="Volume in microliters">
+    </div>
+    
+    <div class="form-row param-row param-flowRate" style="display:none">
+        <label for="node-input-flowRate"><i class="fa fa-tachometer"></i> Flow Rate</label>
+        <input type="text" id="node-input-flowRate" placeholder="Flow rate (μL/s)">
+    </div>
+    
+    <div class="form-row param-row param-wellLocation" style="display:none">
+        <label for="node-input-wellLocation"><i class="fa fa-map-marker"></i> Well Location</label>
+        <input type="text" id="node-input-wellLocation" placeholder="top, bottom, center">
+    </div>
+    
+    <div class="form-row param-row param-offset" style="display:none">
+        <label><i class="fa fa-arrows"></i> Offset (x,y,z)</label>
+        <label for="node-input-offset-x" style="width:auto">X:</label>
+        <input type="text" id="node-input-offset-x" style="width:50px" placeholder="0" data-offset="x">
+        <label for="node-input-offset-y" style="width:auto; margin-left:10px">Y:</label>
+        <input type="text" id="node-input-offset-y" style="width:50px" placeholder="0" data-offset="y">
+        <label for="node-input-offset-z" style="width:auto; margin-left:10px">Z:</label>
+        <input type="text" id="node-input-offset-z" style="width:50px" placeholder="0" data-offset="z">
+    </div>
+    
+    <div class="form-row param-row param-minimumZHeight" style="display:none">
+        <label for="node-input-minimumZHeight"><i class="fa fa-arrows-v"></i> Min Z Height</label>
+        <input type="text" id="node-input-minimumZHeight" placeholder="Minimum Z height">
+    </div>
+    
+    <div class="form-row param-row param-forceDirect" style="display:none">
+        <label for="node-input-forceDirect"><i class="fa fa-bolt"></i> Force Direct</label>
+        <input type="checkbox" id="node-input-forceDirect" style="display:inline-block; width:auto; vertical-align:top;">
+    </div>
+    
+    <div class="form-row param-row param-speed" style="display:none">
+        <label for="node-input-speed"><i class="fa fa-forward"></i> Speed</label>
+        <input type="text" id="node-input-speed" placeholder="Movement speed">
+    </div>
+    
+    <div class="form-row param-row param-pipetteName" style="display:none">
+        <label for="node-input-pipetteName"><i class="fa fa-eyedropper"></i> Pipette Name</label>
+        <input type="text" id="node-input-pipetteName" placeholder="e.g., p300_single">
+    </div>
+    
+    <div class="form-row param-row param-mount" style="display:none">
+        <label for="node-input-mount"><i class="fa fa-plug"></i> Mount</label>
+        <select id="node-input-mount">
+            <option value="">-- Select --</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+        </select>
+    </div>
+    
+    <div class="form-row param-row param-axes" style="display:none">
+        <label for="node-input-axes"><i class="fa fa-arrows"></i> Axes</label>
+        <input type="text" id="node-input-axes" placeholder='["x", "y", "z"]'>
+    </div>
+    
+    <div class="form-row param-row param-message" style="display:none">
+        <label for="node-input-message"><i class="fa fa-comment"></i> Message</label>
+        <input type="text" id="node-input-message" placeholder="Message to display">
+    </div>
+    
+    <div class="form-row param-row param-seconds" style="display:none">
+        <label for="node-input-seconds"><i class="fa fa-clock-o"></i> Seconds</label>
+        <input type="text" id="node-input-seconds" placeholder="Delay in seconds">
+    </div>
+    
+    <div class="form-row param-row param-newLocation" style="display:none">
+        <label for="node-input-newLocation"><i class="fa fa-location-arrow"></i> New Location</label>
+        <input type="text" id="node-input-newLocation" placeholder="New location">
+    </div>
+    
+    <div class="form-row param-row param-strategy" style="display:none">
+        <label for="node-input-strategy"><i class="fa fa-puzzle-piece"></i> Strategy</label>
+        <input type="text" id="node-input-strategy" placeholder="Movement strategy">
+    </div>
+    
+    <div class="form-row param-row param-location" style="display:none">
+        <label for="node-input-location"><i class="fa fa-map-marker"></i> Location</label>
+        <input type="text" id="node-input-location" placeholder="Location">
+    </div>
+    
+    <div class="form-row param-row param-loadName" style="display:none">
+        <label for="node-input-loadName"><i class="fa fa-tag"></i> Load Name</label>
+        <input type="text" id="node-input-loadName" placeholder="Labware load name">
+    </div>
+    
+    <div class="form-row param-row param-namespace" style="display:none">
+        <label for="node-input-namespace"><i class="fa fa-folder"></i> Namespace</label>
+        <input type="text" id="node-input-namespace" placeholder="Labware namespace">
+    </div>
+    
+    <div class="form-row param-row param-version" style="display:none">
+        <label for="node-input-version"><i class="fa fa-code-fork"></i> Version</label>
+        <input type="text" id="node-input-version" placeholder="Labware version">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="opentrons-command">
+    <p>Send commands to a running protocol on an Opentrons robot.</p>
+    <h3>Important: Run ID Required</h3>
+    <p style="background-color: #ffe6e6; padding: 10px; border-left: 3px solid #ff0000;">
+        <strong>This node requires an active Run ID to execute commands.</strong><br>
+        You must first create a run using the "Run Management" node with action "Create Run" before sending commands.
+    </p>
+    <h3>Typical Flow</h3>
+    <ol>
+        <li>Use "Run Management" node with "Create Run" action to start a new run</li>
+        <li>Extract the run ID from the response (payload.data.id)</li>
+        <li>Pass the run ID to this node via msg.runId</li>
+        <li>Send your commands</li>
+    </ol>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>runId <span class="property-type">string</span></dt>
+        <dd><strong>REQUIRED</strong> - The run ID from a previously created run. Can be passed as msg.runId or msg.payload.runId</dd>
+        <dt>commandType <span class="property-type">string</span></dt>
+        <dd>Override the configured command type via msg.commandType</dd>
+        <dt>params <span class="property-type">object</span></dt>
+        <dd>Override any command parameters via msg properties or msg.params object</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>The command response including command ID and status</dd>
+    </dl>
+    <h3>Example Flow</h3>
+    <pre>
+[Inject] → [Run Management: Create] → [Change Node: Set msg.runId] → [Send Command: Home]
+    </pre>
+    <h3>Available Commands</h3>
+    <ul>
+        <li><b>Movement:</b> home, moveToWell, moveLabware</li>
+        <li><b>Pipetting:</b> aspirate, dispense, blowout, pickUpTip, dropTip</li>
+        <li><b>Loading:</b> loadLabware, loadPipette</li>
+        <li><b>Control:</b> pause, waitForResume, delay</li>
+    </ul>
+</script>

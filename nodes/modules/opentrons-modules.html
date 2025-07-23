@@ -1,0 +1,44 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-modules',{
+        category: 'opentrons',
+        color: '#1E90FF',
+        defaults: {
+            name: {value: ""},
+            server: {value: "", type: "opentrons-config", required: true}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-cubes",
+        label: function() {
+            return this.name || "Get Modules";
+        },
+        paletteLabel: "Get Modules"
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-modules">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="opentrons-modules">
+    <p>Get the list of modules attached to an Opentrons robot.</p>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">any</span></dt>
+        <dd>Triggers the get modules request</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>The modules data including temperature modules, magnetic modules, etc.</dd>
+    </dl>
+    <h3>Details</h3>
+    <p>This node sends a GET request to /modules endpoint to retrieve information about attached modules.</p>
+</script>

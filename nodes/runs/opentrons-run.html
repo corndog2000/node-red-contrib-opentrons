@@ -1,0 +1,66 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-run',{
+        category: 'opentrons',
+        color: '#1E90FF',
+        defaults: {
+            name: {value: ""},
+            server: {value: "", type: "opentrons-config", required: true},
+            action: {value: "list"}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "font-awesome/fa-play-circle",
+        label: function() {
+            return this.name || "Run: " + this.action;
+        },
+        paletteLabel: "Run Management"
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-run">
+    <div class="form-row">
+        <label for="node-input-server"><i class="fa fa-server"></i> Server</label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row">
+        <label for="node-input-action"><i class="fa fa-tasks"></i> Action</label>
+        <select id="node-input-action">
+            <option value="list">List Runs</option>
+            <option value="create">Create Run</option>
+            <option value="get">Get Run</option>
+            <option value="delete">Delete Run</option>
+            <option value="current">Get Current Run</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="opentrons-run">
+    <p>Manage protocol runs on an Opentrons robot.</p>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>For create action: run configuration data</dd>
+        <dt>runId <span class="property-type">string</span></dt>
+        <dd>For get/delete actions: the run ID (can also be in payload.runId)</dd>
+        <dt>action <span class="property-type">string</span></dt>
+        <dd>Override the configured action (list|create|get|delete|current)</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>The run data or list of runs</dd>
+    </dl>
+    <h3>Details</h3>
+    <p>This node provides various operations for managing protocol runs:</p>
+    <ul>
+        <li><b>List Runs</b>: Get all runs</li>
+        <li><b>Create Run</b>: Create a new run</li>
+        <li><b>Get Run</b>: Get a specific run by ID</li>
+        <li><b>Delete Run</b>: Delete a run</li>
+        <li><b>Get Current Run</b>: Get the currently active run</li>
+    </ul>
+</script>

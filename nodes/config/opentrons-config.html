@@ -1,0 +1,50 @@
+<script type="text/javascript">
+    RED.nodes.registerType('opentrons-config',{
+        category: 'config',
+        defaults: {
+            name: {value: ""},
+            hostname: {value: "localhost", required: true},
+            port: {value: 31950, required: true, validate: RED.validators.number()}
+        },
+        credentials: {
+            token: {type: "text"}
+        },
+        label: function() {
+            return this.name || this.hostname + ":" + this.port;
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="opentrons-config">
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-hostname"><i class="fa fa-server"></i> Hostname</label>
+        <input type="text" id="node-config-input-hostname" placeholder="localhost">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-port"><i class="fa fa-plug"></i> Port</label>
+        <input type="text" id="node-config-input-port" placeholder="31950">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-token"><i class="fa fa-key"></i> Token</label>
+        <input type="text" id="node-config-input-token" placeholder="Authentication token (optional)">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="opentrons-config">
+    <p>Configuration node for Opentrons robot connection.</p>
+    <h3>Properties</h3>
+    <dl class="node-properties">
+        <dt>Name <span class="property-type">string</span></dt>
+        <dd>Optional name for this configuration</dd>
+        <dt>Hostname <span class="property-type">string</span></dt>
+        <dd>Hostname or IP address of the Opentrons robot</dd>
+        <dt>Port <span class="property-type">number</span></dt>
+        <dd>Port number (default: 31950)</dd>
+        <dt>Token <span class="property-type">string</span></dt>
+        <dd>Optional authentication token</dd>
+    </dl>
+</script>
