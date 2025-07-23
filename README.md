@@ -58,7 +58,3 @@ All nodes require an Opentrons configuration node that specifies:
 ## API Version
 
 This palette uses Opentrons API version 3 (`Opentrons-Version: 3` header).
-
-## License
-
-Apache-2.0
