@@ -51,9 +51,6 @@ module.exports = function(RED) {
                             const nodeToUpdate = RED.nodes.getNode(node.id);
                             if (nodeToUpdate) {
                                 nodeToUpdate.maintenanceRunId = newId;
-                                
-                                // Save the updated configuration
-                                RED.nodes.dirty(true);
                             }
                             
                             // Also update all maintenance command nodes on the same server to use this ID
@@ -97,7 +94,6 @@ module.exports = function(RED) {
                             const nodeToUpdate = RED.nodes.getNode(node.id);
                             if (nodeToUpdate) {
                                 nodeToUpdate.maintenanceRunId = "";
-                                RED.nodes.dirty(true);
                             }
                             
                             // Clear from command nodes too
